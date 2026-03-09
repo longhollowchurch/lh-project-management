@@ -24,7 +24,7 @@ namespace RockWeb.Plugins.com_blueboxmoon.ProjectManagement
 
     [LinkedPage( "Detail Page", "The page that allows the user to view the details of a project.", true, "", "", 0 )]
     [LinkedPage( "Project Entry Page", "If set, this page will be used when adding a new project, otherwise the project detail page is used.", false, order: 1 )]
-    public partial class ProjectList : RockBlock
+    public partial class ProjectList : RockBlock, ICustomGridColumns
     {
         #region Private Fields
 
@@ -204,6 +204,12 @@ namespace RockWeb.Plugins.com_blueboxmoon.ProjectManagement
             if ( _categoryId.HasValue )
             {
                 qry = qry.Where( p => p.CategoryId == _categoryId );
+            }
+
+            var personId = PageParameter("PersonId").AsIntegerOrNull();
+            if (personId.HasValue)
+            {
+                qry = qry.Where(p => p.Assignees.Any(a => a.PersonId == personId.Value));
             }
 
             return qry;
