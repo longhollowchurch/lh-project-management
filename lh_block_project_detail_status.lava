@@ -1,0 +1,96 @@
+{% assign pm = PageParameter.Id %}
+{% sql %}
+    SELECT 
+        CASE WHEN pbc.[Id] = pbcc.[Id] THEN pbc.[Id] ELSE 0 END AS [CurrentId]
+        , CASE WHEN pbc.[Name] = pbcc.[Name] THEN pbc.[Name] END AS [CurrentName]
+        , pbcc.[Id] AS [OtherId]
+        , pbcc.[Name] AS [OtherName]
+    FROM 
+        [_com_blueboxmoon_ProjectManagement_ProjectBoardCard] pb
+        INNER JOIN [_com_blueboxmoon_ProjectManagement_ProjectBoardColumn] pbc
+            ON pb.[ProjectBoardColumnId] = pbc.[Id]
+        INNER JOIN [_com_blueboxmoon_ProjectManagement_ProjectBoardColumn] pbcc
+            ON pbc.[ProjectBoardId] = pbcc.[ProjectBoardId]
+    WHERE
+        pb.[ProjectId] = '{{ pm }}'
+    ORDER BY
+        pbcc.[Order];
+{% endsql %}
+
+{% assign currentColumn = results | Where:'CurrentId',0,'notequal' | First %}
+{% assign results = results | Where:'CurrentId',0 | OrderBy:'Order' %}
+
+{% assign statusColor = '#c4a45a' %}
+{% assign bgColor = '#ffffff' %}
+
+{% case currentColumn.CurrentName %}
+  {% when 'Ready to Start' %}
+    {% assign statusColor = '#95a5a6' %}
+    {% assign bgColor = '#f7f9f9' %}
+
+  {% when 'In Progress' %}
+    {% assign statusColor = '#f1c40f' %}
+    {% assign bgColor = '#fffbeb' %}
+
+  {% when 'Waiting for Review' %}
+    {% assign statusColor = '#3498db' %}
+    {% assign bgColor = '#eff6ff' %}
+
+  {% when 'Ministry Action Required' %}
+    {% assign statusColor = '#e67e22' %}
+    {% assign bgColor = '#fff7ed' %}
+
+  {% when 'Give to Triumph' %}
+    {% assign statusColor = '#9b59b6' %}
+    {% assign bgColor = '#fdf4ff' %}
+
+  {% when "Let's Discuss!" %}
+    {% assign statusColor = '#475569' %}
+    {% assign bgColor = '#f1f5f9' %}
+
+  {% when 'On Hold' %}
+    {% assign statusColor = '#c0392b' %}
+    {% assign bgColor = '#fdecea' %}
+
+  {% when 'Complete' %}
+    {% assign statusColor = '#27ae60' %}
+    {% assign bgColor = '#ecfdf5' %}
+{% endcase %}
+
+
+<div class="dropdown"
+     style="background-color: {{ bgColor }};
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid {{ statusColor }};
+            margin-bottom: 16px;
+            font-family: 'Segoe UI', sans-serif;
+            width: 100%;">
+    <a class="btn d-flex justify-content-between align-items-center dropdown-toggle" 
+       style="font-weight: bold; font-size: 1rem; text-decoration: none; color: #374151; width: 100%; padding: 10px 14px; transition: background-color 0.2s, color 0.2s;" 
+       type="button" id="dropdownMenuButton" data-toggle="dropdown">
+        <span>{{ currentColumn.CurrentName | Upcase }}</span>
+        <span style="font-size: 1.2rem; color: #4b5563; line-height: 1;">&#9662;</span>
+    </a>
+    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" style="width: 100%; box-sizing: border-box; padding: 0;">
+        {% for result in results %}
+            <a class="dropdown-item d-block" 
+               style="padding: 10px 14px; color: #374151; border-bottom: 1px solid #e5e7eb; transition: background-color 0.2s, color 0.2s;" 
+               href="/workflowentry/310?ProjectId={{ pm }}&OldColumnId={{ currentColumn.CurrentId }}&NewColumnId={{ result.OtherId }}">
+               {{ result.OtherName }}
+            </a>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+#dropdownMenuButton:hover {
+    background-color: #e5e7eb;
+    color: #1f2937;
+}
+
+.dropdown-item:hover {
+    background-color: #c4a45a;
+    color: #92400e;
+}
+</style>
