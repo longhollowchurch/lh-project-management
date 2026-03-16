@@ -1,0 +1,378 @@
+{% sql return:'categoryCounts' %}
+SELECT
+    CategoryId,
+    COUNT(*) AS ProjectCount
+FROM
+    [dbo].[_com_blueboxmoon_ProjectManagement_Project]
+WHERE
+    ProjectTypeId = 1
+    AND IsActive = 1
+GROUP BY
+    CategoryId
+{% endsql %}
+
+{% sql return:'allProjectsCount' %}
+SELECT
+    COUNT(*) AS TotalProjects
+FROM
+    [dbo].[_com_blueboxmoon_ProjectManagement_Project]
+WHERE
+    ProjectTypeId = 1
+    AND IsActive = 1
+{% endsql %}
+
+<style>
+  /* ----- Settings Buttons ----- */
+  #settingsContainer {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  .setting-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid #bbb;
+    background-color: #f7f7f7;
+    color: #444;
+    cursor: pointer;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+    white-space: normal;
+    text-align: center;
+    flex-wrap: wrap;
+  }
+
+  .setting-btn:hover {
+    background-color: #eee;
+    border-color: #999;
+  }
+
+  .setting-btn.active {
+    background-color: #31b66f;
+    border-color: #31b66f;
+    color: #fff;
+  }
+
+  /* ----- Category Buttons ----- */
+  #buttonContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  #buttonContainer .btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    border: 1px solid #ddd;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    border-radius: 16px;
+    user-select: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: all 0.25s ease;
+    flex: 1 1 calc(16.66% - 10px);
+    min-width: 120px;
+    box-sizing: border-box;
+    text-align: center;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  #buttonContainer .btn:hover {
+    background-color: #a8e6c6;
+    border-color: #31b66f;
+    box-shadow: 0 3px 8px rgba(49, 182, 111, 0.6);
+    transform: scale(1.03);
+  }
+
+  #buttonContainer .btn:active {
+    transform: scale(0.98);
+  }
+
+  #buttonContainer .btn.active {
+    background-color: #31b66f;
+    border-color: #31b66f;
+    color: #fff;
+    box-shadow: 0 3px 8px rgba(49, 182, 111, 0.6);
+  }
+
+  .badge {
+    background-color: #d0d9ff;
+    color: #3d5eff;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 20px;
+    text-align: center;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.1);
+    user-select: none;
+  }
+</style>
+
+<div id="settingsContainer"></div>
+<div id="buttonContainer"></div>
+<br>
+
+<script>
+  const categoryCounts = {
+    {% for c in categoryCounts %}
+      "{{ c.CategoryId }}": {{ c.ProjectCount }}{% if forloop.last == false %},{% endif %}
+    {% endfor %}
+  };
+
+  const allProjectsCount = {{ allProjectsCount[0].TotalProjects | Default:0 }};
+  const currentPersonId = '{{ CurrentPerson.Id }}';
+  const currentPersonName = '{{ CurrentPerson.FullName }}';
+
+  // ─── Native filter field accessors ───────────────────────────────────────
+
+  function getCategoryField() {
+    return document.querySelector('input[id$="cpCategory_hfItemId"]');
+  }
+
+  function getCategoryNameField() {
+    return document.querySelector('input[id$="cpCategory_hfItemName"]');
+  }
+
+  function getAssignedToField() {
+    return document.querySelector('input[id$="ppAssignedTo_hfPersonId"]');
+  }
+
+  function getAssignedToNameField() {
+    return document.querySelector('input[id$="ppAssignedTo_hfPersonName"]');
+  }
+
+  function getNameField() {
+    return document.querySelector('input[id$="gfProject_tbName"]');
+  }
+
+  function getRequestedFromField() {
+    return document.querySelector('input[id$="drpRequested_lower"]');
+  }
+
+  function getRequestedToField() {
+    return document.querySelector('input[id$="drpRequested_upper"]');
+  }
+
+  function getDueDateFromField() {
+    return document.querySelector('input[id$="drpDueDate_lower"]');
+  }
+
+  function getDueDateToField() {
+    return document.querySelector('input[id$="drpDueDate_upper"]');
+  }
+
+  function getFilterApplyBtn() {
+    return document.querySelector('a[id$="gfProject_lbFilter"]');
+  }
+
+  // ─── Apply the native filter ──────────────────────────────────────────────
+
+  function applyFilter() {
+    const filterBtn = getFilterApplyBtn();
+    if (filterBtn) {
+      filterBtn.click();
+    }
+  }
+
+  // ─── Set category filter ──────────────────────────────────────────────────
+
+  function setCategoryFilter(categoryId, categoryName) {
+    const catField = getCategoryField();
+    const catNameField = getCategoryNameField();
+    if (catField) catField.value = categoryId ? 'C' + categoryId : '';
+    if (catNameField) catNameField.value = categoryName || '';
+  }
+
+  // ─── Set assigned to filter ───────────────────────────────────────────────
+
+  function setAssignedToFilter(personId, personName) {
+    const personField = getAssignedToField();
+    const personNameField = getAssignedToNameField();
+    if (personField) personField.value = personId || '0';
+    if (personNameField) personNameField.value = personName || '';
+  }
+
+  // ─── Read current native filter state ────────────────────────────────────
+
+  function getCurrentCategoryId() {
+    const catField = getCategoryField();
+    if (!catField || !catField.value || catField.value === '0') return null;
+    return catField.value.replace('C', '');
+  }
+
+  function getCurrentAssignedToId() {
+    const personField = getAssignedToField();
+    if (!personField || personField.value === '0' || !personField.value) return null;
+    return personField.value;
+  }
+
+  // ─── Check if any non-default filters are active ─────────────────────────
+  // "Default" state is: no category, no assigned to, no name,
+  // no date ranges. The Active state checkbox is always on by
+  // default and is intentionally ignored here.
+
+  function hasActiveFilters() {
+    const hasCat = !!getCurrentCategoryId();
+    const hasAssigned = !!getCurrentAssignedToId();
+
+    const nameField = getNameField();
+    const hasName = nameField && nameField.value.trim() !== '';
+
+    const reqFrom = getRequestedFromField();
+    const reqTo = getRequestedToField();
+    const hasRequested = (reqFrom && reqFrom.value.trim() !== '') ||
+                         (reqTo && reqTo.value.trim() !== '');
+
+    const dueFrom = getDueDateFromField();
+    const dueTo = getDueDateToField();
+    const hasDue = (dueFrom && dueFrom.value.trim() !== '') ||
+                   (dueTo && dueTo.value.trim() !== '');
+
+    return hasCat || hasAssigned || hasName || hasRequested || hasDue;
+  }
+
+  // ─── Sync dashboard button states to native filter state ─────────────────
+
+  function syncButtonStates() {
+    const activeCategoryId = getCurrentCategoryId();
+    const activePersonId = getCurrentAssignedToId();
+    const filtersActive = hasActiveFilters();
+
+    // All Projects — active only when no filters are applied
+    if (!filtersActive) {
+      allProjectsBtn.classList.add('active');
+    } else {
+      allProjectsBtn.classList.remove('active');
+    }
+
+    // My Projects — active only when Assigned To = current user
+    // and no category is selected
+    if (activePersonId === currentPersonId && !activeCategoryId) {
+      personBtn.classList.add('active');
+    } else {
+      personBtn.classList.remove('active');
+    }
+
+    // Category buttons — only one active at a time, only when
+    // no Assigned To filter is set
+    document.querySelectorAll('#buttonContainer .btn').forEach(btn => {
+      if (btn.dataset.categoryId === activeCategoryId && !activePersonId) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  // ─── Watch for native filter changes (two-way sync) ───────────────────────
+
+  function watchForNativeFilterChanges() {
+    const updatePanel = document.querySelector('div[id$="upnlContent"]');
+    if (!updatePanel) return;
+
+    const observer = new MutationObserver(() => {
+      syncButtonStates();
+    });
+
+    observer.observe(updatePanel, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  // ─── Build UI ─────────────────────────────────────────────────────────────
+
+  const settingsContainer = document.getElementById('settingsContainer');
+  const container = document.getElementById('buttonContainer');
+
+  const categories = [
+    { label: "📁 Category 599", categoryId: "599" },
+    { label: "📁 Category 600", categoryId: "600" },
+    { label: "📁 Category 601", categoryId: "601" },
+    { label: "📁 Category 602", categoryId: "602" }
+  ];
+
+  // All Projects button
+  const allProjectsBtn = document.createElement('button');
+  allProjectsBtn.className = 'setting-btn';
+  allProjectsBtn.textContent = `📋 All Projects (${allProjectsCount})`;
+  allProjectsBtn.addEventListener('click', () => {
+    setCategoryFilter(null, null);
+    setAssignedToFilter(null, null);
+    applyFilter();
+  });
+  settingsContainer.appendChild(allProjectsBtn);
+
+  // My Projects button
+  const personBtn = document.createElement('button');
+  personBtn.className = 'setting-btn';
+  personBtn.textContent = '👤 My Projects';
+  personBtn.addEventListener('click', () => {
+    setCategoryFilter(null, null);
+    setAssignedToFilter(currentPersonId, currentPersonName);
+    applyFilter();
+  });
+  settingsContainer.appendChild(personBtn);
+
+  // Category buttons
+  categories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.dataset.categoryId = cat.categoryId;
+
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = cat.label;
+
+    const countBadge = document.createElement('span');
+    countBadge.className = 'badge';
+    countBadge.textContent = categoryCounts[cat.categoryId] || 0;
+
+    btn.appendChild(labelSpan);
+    btn.appendChild(countBadge);
+
+    btn.addEventListener('click', () => {
+      setAssignedToFilter(null, null);
+      setCategoryFilter(cat.categoryId, cat.label);
+      applyFilter();
+    });
+
+    container.appendChild(btn);
+  });
+
+  // ─── Initialize ───────────────────────────────────────────────────────────
+
+// Sys.Application.add_load is Rock's native way to run code after
+// the page and all update panels are fully initialized. More reliable
+// than setTimeout for Rock's rendering cycle.
+  Sys.Application.add_load(function() {
+      syncButtonStates();
+      watchForNativeFilterChanges();
+  });
+
+// Handle ASP.NET async postback completion
+  if (typeof Sys !== 'undefined') {
+      Sys.WebForms.PageRequestManager.getInstance().add_endRequest(() => {
+          syncButtonStates();
+          watchForNativeFilterChanges();
+      });
+  }
+</script>
