@@ -206,12 +206,6 @@ namespace RockWeb.Plugins.com_blueboxmoon.ProjectManagement
                 qry = qry.Where( p => p.CategoryId == _categoryId );
             }
 
-            var personId = PageParameter("PersonId").AsIntegerOrNull();
-            if (personId.HasValue)
-            {
-                qry = qry.Where(p => p.Assignees.Any(a => a.PersonId == personId.Value));
-            }
-
             return qry;
         }
 
