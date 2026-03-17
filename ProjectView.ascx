@@ -3,7 +3,7 @@
 
 <asp:UpdatePanel ID="upnlContent" runat="server">
     <ContentTemplate>
-        <div class="panel panel-block list-as-blocks">
+        <div class="panel panel-block list-as-blocks" style="display:none;">
             <div class="panel-heading">
                 <h1 class="panel-title"><i class="fa fa-list-ul"></i> Project Types</h1>
 
